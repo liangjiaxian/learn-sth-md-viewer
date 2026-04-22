@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>记忆架构 · 深绿叙事 | 完美图表与代码渲染</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
+  
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/mhchem.min.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      font-size: 16px;
+      line-height: 1.75;
+      color: #1e293b;
+      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+    }
+    .custom-scroll::-webkit-scrollbar { width: 5px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.08); border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #10B981; border-radius: 10px; }
+    @keyframes fadeSlideUp {
+      0% { opacity: 0; transform: translateY(12px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in-up { animation: fadeSlideUp 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards; }
+    .tab-pane { animation: fadeSlideUp 0.3s ease-out; }
+    .hover-card-lift { transition: all 0.3s ease; }
+    .hover-card-lift:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -12px rgba(0,0,0,0.15); }
+    .table-responsive { overflow-x: auto; margin: 1.75rem 0; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .doc-content table { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 16px; overflow: hidden; min-width: 600px; }
+    .doc-content th { background: #0A3D2E; color: white; font-weight: 600; padding: 12px 16px; }
+    .doc-content td { padding: 10px 16px; border-bottom: 1px solid #e2e8f0; }
+    .doc-content tr:nth-child(even) { background-color: #f0fdf4; }
+    .doc-content tr:nth-child(odd) { background-color: #ffffff; }
+    .doc-content mark, .highlight-green { background: rgba(16,185,129,0.25); padding: 0 4px; border-radius: 6px; color: #0A3D2E; font-weight: 500; }
+    .echarts-box { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 8px; width: 100%; min-height: 400px; }
+    .h3-card-wrapper { overflow: visible !important; }
+    .mermaid-container {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1px solid rgba(16,185,129,0.25);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      margin: 1.5rem 0;
+      padding: 20px;
+      width: 100%;
+      overflow-x: auto;
+      text-align: center;
+    }
+    .mermaid-container svg {
+      display: block;
+      margin: 0 auto;
+      background: white;
+    }
+    .doc-content pre { background: #f8fafc; border-radius: 14px; padding: 1rem; overflow-x: auto; margin: 1.5rem 0; border: 1px solid #e2e8f0; }
+    .doc-content code { font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace; font-size: 0.9em; background: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 6px; color: #0A3D2E; }
+    .doc-content pre code { background: transparent; padding: 0; color: #1e293b; font-size: 0.85rem; line-height: 1.5; }
+    .hljs { background: #f8fafc !important; color: #1e293b !important; }
+    .hljs-keyword, .hljs-selector-tag, .hljs-title { color: #0A3D2E !important; font-weight: 600; }
+    .hljs-string, .hljs-attr { color: #10B981 !important; }
+    .hljs-number, .hljs-literal { color: #0f766e !important; }
+    .hljs-comment { color: #64748b !important; font-style: italic; }
+    .excalidraw-fixed-container { height: 400px; width: 100%; object-fit: contain; background: #fefce8; border-radius: 12px; }
+    a { color: #10B981; text-decoration: none; border-bottom: 1px dotted transparent; }
+    a:hover { color: #0A3D2E; border-bottom-color: #10B981; }
+    .doc-content > *:first-child { margin-top: 0; }
+    .doc-content > *:last-child { margin-bottom: 0; }
+
+    .log-panel {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 380px;
+      max-height: 400px;
+      color: #cbd5e1;
+      border-radius: 16px;
+      box-shadow: 0 20px 35px -12px rgba(0,0,0,0.4);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #10B981;
+      backdrop-filter: blur(8px);
+      background: rgba(30,41,59,0.92);
+      transition: all 0.2s;
+    }
+    .log-header {
+      padding: 10px 14px;
+      background: #0f172a;
+      border-radius: 16px 16px 0 0;
+      cursor: pointer;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      user-select: none;
+      border-bottom: 1px solid #334155;
+    }
+    .log-content {
+      overflow-y: auto;
+      padding: 10px;
+      font-size: 11px;
+      line-height: 1.5;
+      max-height: 340px;
+    }
+    .log-entry {
+      border-left: 3px solid #10B981;
+      margin-bottom: 8px;
+      padding: 4px 8px;
+      background: #0f172a70;
+      border-radius: 6px;
+      word-break: break-word;
+    }
+    .log-error { border-left-color: #ef4444; background: #7f1a1a30; color: #fecaca; }
+    .log-warn { border-left-color: #f59e0b; }
+    .log-info { border-left-color: #3b82f6; }
+    .clear-log-btn { background: #334155; border: none; border-radius: 20px; padding: 2px 10px; color: white; cursor: pointer; font-size: 10px; }
+    .clear-log-btn:hover { background: #ef4444; }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            greenDeep: '#0A3D2E',
+            greenEmerald: '#10B981',
+            greenSoft: '#f0fdf4',
+            slateText: '#1e293b',
+            slateMuted: '#64748b',
+          },
+          borderRadius: { 'xl': '16px', '2xl': '20px' }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="antialiased overflow-hidden h-screen flex">
+
+  <aside class="w-80 flex-shrink-0 h-screen overflow-y-auto custom-scroll" style="background: linear-gradient(180deg, #0A3D2E 0%, #14532d 100%); box-shadow: 4px 0 20px rgba(0,0,0,0.08);">
+    <div class="pt-8 pb-5 px-6 border-b border-white/10">
+      <h1 class="text-2xl font-semibold text-white tracking-tight">记忆架构</h1>
+      <p class="text-sm text-white/60 mt-1.5">分层记忆 · 认知引擎</p>
+      <div class="mt-5 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+    </div>
+    <div id="mdListSidebar" class="py-5 px-4 space-y-1"></div>
+    <div class="mt-12 pt-6 pb-8 px-6 border-t border-white/10 text-white/40 text-xs text-center">
+      <span>v3.0 · 深绿叙事</span><br/><span class="text-[11px]">Mermaid 完美修复 | 100%宽度显示 | Python高亮</span>
+    </div>
+  </aside>
+
+  <main class="flex-1 h-screen overflow-y-auto bg-greenSoft/30 custom-scroll">
+    <div id="mainContent" class="max-w-4xl mx-auto px-6 py-10 md:py-12 fade-in-up">
+      <div class="flex flex-col items-center justify-center min-h-[50vh] text-slateMuted">
+        <div class="bg-white/70 backdrop-blur-sm rounded-2xl p-8 text-center shadow-sm border border-greenEmerald/20">
+          <span class="text-5xl block mb-3">🌿</span>
+          <p class="text-lg font-medium">选择左侧文档，体验精准图表高度 + Python 高亮渲染</p>
+          <p class="text-sm mt-2">✅ Mermaid 图表将100%宽度显示，不再缩在角落</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+    <!-- 浮动日志面板 -->
+    <div id="diagnosticLogPanel" class="log-panel">
+      <div class="log-header">
+        <span>📋 Mermaid 诊断日志</span>
+        <button id="clearLogBtn" class="clear-log-btn">清空</button>
+      </div>
+      <div id="logMessages" class="log-content">
+        <div class="log-entry log-info">✨ 日志系统已启动，等待文档渲染...</div>
+      </div>
+    </div>
+    <button id="toggleLogBtn" style="position: fixed; bottom: 20px; right: 20px; width: 48px; height: 48px; border-radius: 50%; background: #0A3D2E; color: white; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 10000; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: all 0.2s;">
+      📋
+    </button>
+<script>
+  
+  // ---------- 日志工具 (同时输出到控制台和浮动面板) ----------
+
+  const CONFIG = {
+    VIEWBOX_MAX_SIZE: 5000,
+    VIEWBOX_MAX_SIZE_KANBAN: 3000,
+    FINAL_MAX_SIZE: 3000,
+    FINAL_MAX_SIZE_KANBAN: 2000,
+    KANBAN_MAX_CONTENT_HEIGHT: 800,
+    KANBAN_SCROLL_MAX_HEIGHT: '600px',
+    VIEWBOX_PADDING: 50,
+    VIEWBOX_PADDING_KANBAN: 30,
+    QUADRANT_MIN_WIDTH: 500,
+    TREEMAP_MIN_WIDTH: 600,
+    CONTAINER_WIDTH_RATIO: 0.9,
+    CONTAINER_WIDTH_MAX: 800,
+  };
+
+  // 日志面板隐藏/显示控制
+  const logPanel = document.getElementById('diagnosticLogPanel');
+  const toggleBtn = document.getElementById('toggleLogBtn');
+  
+  // 初始状态：隐藏
+  logPanel.style.display = 'none';
+  
+  let isLogVisible = false;
+  
+  toggleBtn.addEventListener('click', () => {
+    isLogVisible = !isLogVisible;
+    logPanel.style.display = isLogVisible ? 'flex' : 'none';
+    toggleBtn.style.background = isLogVisible ? '#ef4444' : '#0A3D2E';
+    toggleBtn.innerHTML = isLogVisible ? '✕' : '📋';
+    toggleBtn.title = isLogVisible ? '关闭日志' : '打开日志';
+  });
+
+  const logContainer = document.getElementById('logMessages');
+  function addLog(message, type = 'info') {
+    const entry = document.createElement('div');
+    entry.className = `log-entry log-${type}`;
+    const timestamp = new Date().toLocaleTimeString();
+    entry.innerHTML = `<span style="color:#94a3b8;">[${timestamp}]</span> ${message}`;
+    logContainer.appendChild(entry);
+    entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // 控制台对应彩色输出
+    if (type === 'error') console.error(`[Mermaid诊断] ${message}`);
+    else if (type === 'warn') console.warn(`[Mermaid诊断] ${message}`);
+    else console.log(`[Mermaid诊断] ${message}`);
+  }
+  document.getElementById('clearLogBtn')?.addEventListener('click', () => {
+    logContainer.innerHTML = '<div class="log-entry log-info">🧹 日志已清空，重新渲染时会继续记录</div>';
+    addLog('日志面板已手动清空', 'info');
+  });
+
+  const sidebarList = document.getElementById('mdListSidebar');
+  const mainContainer = document.getElementById('mainContent');
+  let mdFileList = [];
+  let currentDocPath = null;
+  let globalH3Cycle = 0;
+  let echartsInstances = [];
+  let echartsObservers = [];
+
+  // 初始化 Mermaid
+  mermaid.initialize({ 
+    startOnLoad: false, 
+    theme: 'base',
+    look: 'handDrawn',   // 🔥 启用手绘风格
+    securityLevel: 'loose',
+    themeVariables: {
+      background: '#ffffff',
+      primaryColor: '#e6f7ec',
+      primaryBorderColor: '#0A3D2E',
+      primaryTextColor: '#1e293b',
+      lineColor: '#0A3D2E',
+      secondaryColor: '#f0fdf4',
+      tertiaryColor: '#ffffff',
+      clusterBkg: '#ffffff',
+      edgeLabelBackground: '#ffffff',
+      nodeBorder: '#0A3D2E',
+      nodeTextColor: '#1e293b',
+      fontSize: '14px',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    },
+    flowchart: { 
+      useMaxWidth: true,
+      htmlLabels: true, 
+      curve: 'basis',
+      nodeSpacing: 65,
+      rankSpacing: 65,
+      padding: 8
+    },
+    sequence: { useMaxWidth: true, diagramMarginX: 10, diagramMarginY: 10 },
+    gantt: { useMaxWidth: true, barHeight: 28 },
+    journey: { useMaxWidth: true }
+  });
+
+  function escapeHtml(str) {
+    if(!str) return '';
+    return str.replace(/[&<>"']/g, function(m) {
+      if(m === '&') return '&amp;';
+      if(m === '<') return '&lt;';
+      if(m === '>') return '&gt;';
+      if(m === '"') return '&quot;';
+      if(m === "'") return '&#39;';
+      return m;
+    });
+  }
+
+  async function fetchMdFilesFromSrc() {
+    try {
+      const response = await fetch('./src/');
+      if(!response.ok) throw new Error('无法列出目录');
+      const text = await response.text();
+      const regex = /href="([^"]+\.md)"/gi;
+      let matches = [];
+      let m;
+      while((m = regex.exec(text)) !== null) {
+        let name = decodeURIComponent(m[1]);
+        if(name.endsWith('.md')) matches.push(name);
+      }
+      if(matches.length === 0) throw new Error('src目录无md文件');
+      matches.sort((a,b)=>a.localeCompare(b));
+      return matches;
+    } catch(err) {
+      console.warn(err);
+      return [];
+    }
+  }
+
+  function renderSidebar(files, activePath = currentDocPath) {
+    if(!files.length) {
+      sidebarList.innerHTML = `<div class="text-white/40 text-sm text-center py-8">📂 未发现 .md 文档<br>请在 /src 目录添加</div>`;
+      return;
+    }
+    let html = '';
+    files.forEach((file, idx) => {
+      const displayName = file.replace(/\.md$/i, '').replace('/src/','');
+      const isActive = (activePath === file);
+      const numberStr = (idx+1).toString().padStart(2, '0');
+      html += `
+        <div class="sidebar-item group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-300 ${isActive ? 'bg-white/10 border-l-4 border-greenEmerald' : 'hover:bg-white/5'}" data-path="${escapeHtml(file)}">
+          <span class="text-greenEmerald/70 font-mono text-sm w-7 ${isActive ? 'text-greenEmerald font-bold' : 'text-white/50'}">${numberStr}</span>
+          <span class="text-[15px] font-medium ${isActive ? 'text-white' : 'text-white/70 group-hover:text-white'} transition">${escapeHtml(displayName)}</span>
+          ${isActive ? '<div class="ml-auto w-1.5 h-1.5 rounded-full bg-greenEmerald"></div>' : ''}
+        </div>
+        <div class="mx-3 h-px bg-white/5"></div>
+      `;
+    });
+    sidebarList.innerHTML = html;
+    
+    document.querySelectorAll('.sidebar-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const path = el.dataset.path;
+        if(path && path !== currentDocPath) loadAndRenderMd(path);
+      });
+    });
+  }
+
+  function fixImagePaths(htmlString) {
+    const div = document.createElement('div');
+    div.innerHTML = htmlString;
+    div.querySelectorAll('img').forEach(img => {
+      let src = img.getAttribute('src');
+      if(src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('/')) {
+        let clean = src.replace(/^\.\//, '');
+        img.setAttribute('src', `./src/${clean}`);
+      }
+    });
+    return div.innerHTML;
+  }
+
+  function wrapTablesWithScroll(container) {
+    const tables = container.querySelectorAll('table');
+    tables.forEach(table => {
+      if (!table.parentElement.classList.contains('table-responsive')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-responsive';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+      }
+    });
+  }
+
+  function wrapH3IntoCards(container) {
+    const h3s = Array.from(container.querySelectorAll('h3'));
+    if(!h3s.length) return;
+    h3s.forEach(h3 => {
+      const card = document.createElement('div');
+      card.className = 'h3-card-wrapper bg-white rounded-2xl border border-greenEmerald/20 shadow-sm mb-8 transition-all';
+      h3.classList.add('text-xl', 'font-bold', 'text-greenDeep', 'relative', 'py-3', 'px-5', 'mb-0', 'm-0');
+      h3.style.background = 'linear-gradient(90deg, #f0fdf4, transparent)';
+      if(!document.querySelector('#h3-left-bar-style')) {
+        const style = document.createElement('style');
+        style.id = 'h3-left-bar-style';
+        style.textContent = `.h3-card-wrapper > h3::before { content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; background: #10B981; border-radius: 2px; }`;
+        document.head.appendChild(style);
+      }
+      h3.style.paddingLeft = '1.25rem';
+      h3.parentNode.insertBefore(card, h3);
+      let current = h3;
+      let nextNode;
+      while(current && current.nextSibling) {
+        nextNode = current.nextSibling;
+        if(nextNode.nodeType === 1 && (nextNode.tagName === 'H2' || nextNode.tagName === 'H3')) break;
+        card.appendChild(current);
+        current = nextNode;
+        if(!current) break;
+      }
+      if(current && !card.contains(current)) card.appendChild(current);
+      card.style.padding = '0 0 1rem 0';
+      const childrenDiv = document.createElement('div');
+      childrenDiv.className = 'px-5 pt-2 pb-1';
+      const h3InCard = card.querySelector('h3');
+      const others = Array.from(card.children).filter(c => c !== h3InCard);
+      others.forEach(node => childrenDiv.appendChild(node));
+      if(h3InCard) card.insertBefore(childrenDiv, h3InCard.nextSibling);
+      else card.appendChild(childrenDiv);
+    });
+  }
+
+  function applyAdaptiveH4Layout(container) {
+    const h3Cards = Array.from(container.querySelectorAll('.h3-card-wrapper'));
+    if(!h3Cards.length) return;
+    h3Cards.forEach((card, idx) => {
+      const h4List = Array.from(card.querySelectorAll(':scope > div > h4, :scope > h4'));
+      if(h4List.length === 0) return;
+      const h4Count = h4List.length;
+      let mode = 'B';
+      if(h4Count >= 2 && h4Count <= 5) {
+        mode = (globalH3Cycle % 3 === 0) ? 'A' : ((globalH3Cycle % 3 === 1) ? 'C' : 'B');
+      }
+      globalH3Cycle = (globalH3Cycle + 1) % 3;
+      
+      const contentContainer = card.querySelector(':scope > div') || card;
+      
+      if(mode === 'A') {
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 my-5';
+        h4List.forEach(h4 => {
+          const cardItem = document.createElement('div');
+          cardItem.className = 'bg-white rounded-xl border-t-4 border-greenEmerald shadow-md hover-card-lift p-5 flex flex-col transition-all';
+          const h4Clone = h4.cloneNode(true);
+          h4Clone.classList.add('text-lg', 'font-bold', 'text-greenDeep', 'mb-3', 'border-b', 'border-greenEmerald/20', 'pb-2');
+          cardItem.appendChild(h4Clone);
+          let next = h4.nextSibling;
+          const contentDiv = document.createElement('div');
+          while(next && next.nodeType === 1 && next.tagName !== 'H4') {
+            contentDiv.appendChild(next.cloneNode(true));
+            next = next.nextSibling;
+          }
+          cardItem.appendChild(contentDiv);
+          grid.appendChild(cardItem);
+        });
+        h4List.forEach(h => {
+          let sib = h.nextSibling;
+          while(sib && sib.nodeType === 1 && sib.tagName !== 'H4') {
+            const toDel = sib;
+            sib = sib.nextSibling;
+            toDel.remove();
+          }
+          h.remove();
+        });
+        contentContainer.appendChild(grid);
+      } 
+      else if(mode === 'C') {
+        const tabsWrapper = document.createElement('div');
+        tabsWrapper.className = 'my-6';
+        const tabHeader = document.createElement('div');
+        tabHeader.className = 'flex flex-wrap gap-1 border-b border-greenEmerald/30 mb-5';
+        const tabContents = document.createElement('div');
+        tabContents.className = 'bg-white/60 rounded-xl p-5 shadow-inner';
+        let panes = [];
+        h4List.forEach((h4, i) => {
+          const tabId = `tab-${Date.now()}-${idx}-${i}`;
+          const btn = document.createElement('button');
+          btn.className = `px-5 py-2.5 text-base font-medium rounded-t-xl transition-all ${i===0 ? 'text-greenDeep border-b-2 border-greenEmerald bg-white/80' : 'text-slateMuted hover:text-greenDeep'}`;
+          btn.innerText = h4.innerText;
+          btn.setAttribute('data-tab-id', tabId);
+          const contentPane = document.createElement('div');
+          contentPane.className = `tab-pane ${i!==0 ? 'hidden' : ''}`;
+          contentPane.id = tabId;
+          let next = h4.nextSibling;
+          while(next && next.nodeType === 1 && next.tagName !== 'H4') {
+            contentPane.appendChild(next.cloneNode(true));
+            next = next.nextSibling;
+          }
+          tabContents.appendChild(contentPane);
+          panes.push(contentPane);
+          btn.addEventListener('click', () => {
+            tabHeader.querySelectorAll('button').forEach(b => {
+              b.classList.remove('text-greenDeep', 'border-b-2', 'border-greenEmerald', 'bg-white/80');
+              b.classList.add('text-slateMuted');
+            });
+            btn.classList.remove('text-slateMuted');
+            btn.classList.add('text-greenDeep', 'border-b-2', 'border-greenEmerald', 'bg-white/80');
+            panes.forEach(p => p.classList.add('hidden'));
+            contentPane.classList.remove('hidden');
+          });
+          tabHeader.appendChild(btn);
+        });
+        tabsWrapper.appendChild(tabHeader);
+        tabsWrapper.appendChild(tabContents);
+        h4List.forEach(h => {
+          let sib = h.nextSibling;
+          while(sib && sib.nodeType === 1 && sib.tagName !== 'H4') {
+            const del = sib;
+            sib = sib.nextSibling;
+            del.remove();
+          }
+          h.remove();
+        });
+        contentContainer.appendChild(tabsWrapper);
+      }
+      else {
+        const timeline = document.createElement('div');
+        timeline.className = 'relative pl-6 ml-2 mt-5 mb-6 border-l-2 border-greenEmerald/40 space-y-5';
+        h4List.forEach(h4 => {
+          const item = document.createElement('div');
+          item.className = 'relative pb-1';
+          const dot = document.createElement('div');
+          dot.className = 'absolute -left-[27px] top-1.5 w-3 h-3 rounded-full bg-greenEmerald ring-4 ring-white shadow-sm';
+          item.appendChild(dot);
+          const titleClone = h4.cloneNode(true);
+          titleClone.classList.add('text-lg', 'font-bold', 'text-greenDeep', 'mb-2');
+          item.appendChild(titleClone);
+          const contentWrap = document.createElement('div');
+          contentWrap.className = 'text-slateText leading-relaxed pl-1 space-y-2';
+          let next = h4.nextSibling;
+          while(next && next.nodeType === 1 && next.tagName !== 'H4') {
+            contentWrap.appendChild(next.cloneNode(true));
+            next = next.nextSibling;
+          }
+          item.appendChild(contentWrap);
+          timeline.appendChild(item);
+        });
+        h4List.forEach(h => {
+          let sib = h.nextSibling;
+          while(sib && sib.nodeType === 1 && sib.tagName !== 'H4') {
+            const del = sib;
+            sib = sib.nextSibling;
+            del.remove();
+          }
+          h.remove();
+        });
+        contentContainer.appendChild(timeline);
+      }
+    });
+  }
+
+  function applyGlobalDecor(container) {
+    container.querySelectorAll('h2').forEach(h2 => {
+      h2.classList.add('text-3xl', 'md:text-[28px]', 'font-bold', 'text-greenDeep', 'text-center', 'mt-12', 'mb-6');
+      if(!h2.parentElement.classList.contains('h2-wrapper')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'h2-wrapper text-center my-8';
+        h2.parentNode.insertBefore(wrapper, h2);
+        wrapper.appendChild(h2);
+        const line = document.createElement('div');
+        line.className = 'w-[60px] h-[3px] bg-gradient-to-r from-greenEmerald to-greenDeep rounded-full mx-auto mt-3 mb-2';
+        wrapper.appendChild(line);
+      }
+    });
+    container.querySelectorAll('p, li, .prose-text').forEach(p => {
+      p.style.lineHeight = '1.75';
+      p.style.color = '#334155';
+      p.style.marginBottom = '1rem';
+      if(p.innerHTML) p.innerHTML = p.innerHTML.replace(/==(.*?)==/g, '<mark class="highlight-green">$1</mark>');
+    });
+    container.querySelectorAll('img').forEach(img => {
+      img.classList.add('rounded-xl', 'shadow-md', 'max-w-full', 'h-auto', 'mx-auto', 'my-6', 'block');
+    });
+    const h2Wrappers = container.querySelectorAll('.h2-wrapper');
+    h2Wrappers.forEach((wrap, i) => {
+      if(i > 0) wrap.style.marginTop = '2rem';
+      const separator = document.createElement('div');
+      separator.className = 'h-px bg-gradient-to-r from-transparent via-greenEmerald/30 to-transparent my-8';
+      wrap.after(separator);
+    });
+    wrapTablesWithScroll(container);
+  }
+
+  function renderEcharts(container) {
+    const blocks = container.querySelectorAll('code.language-echarts');
+    blocks.forEach((block, idx) => {
+      try {
+        const opt = JSON.parse(block.innerText.trim());
+        const div = document.createElement('div');
+        div.className = 'echarts-box';
+        const uid = `echart-${Date.now()}-${idx}`;
+        div.id = uid;
+        const preParent = block.parentElement;
+        preParent.parentNode.replaceChild(div, preParent);
+        const chart = echarts.init(div);
+        opt.animation = true;
+        if(!opt.color) opt.color = ['#10B981', '#0A3D2E', '#34D399', '#059669'];
+        chart.setOption(opt);
+        echartsInstances.push(chart);
+        const observer = new ResizeObserver(() => chart.resize());
+        observer.observe(div);
+        echartsObservers.push(observer);
+      } catch(e) { console.warn('echarts err', e); }
+    });
+  }
+
+  /**
+   * 修复 Mermaid SVG 的 viewBox 问题
+   * 关键修复：使用 requestAnimationFrame 等待 SVG 渲染完成，然后使用 getBoundingClientRect
+   */
+  function fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban) {
+    const padding = isKanban ? CONFIG.VIEWBOX_PADDING_KANBAN : CONFIG.VIEWBOX_PADDING;
+    const newViewBox = `${vbX - padding} ${vbY - padding} ${vbWidth + padding * 2} ${vbHeight + padding * 2}`;
+    svgElement.setAttribute('viewBox', newViewBox);
+    svgElement.style.width = '100%';
+    svgElement.style.height = 'auto';
+    addLog(`fallbackFix applied: ${newViewBox}`, 'warn');
+    return true;
+  }
+
+   async function fixMermaidSvgViewBox(svgElement, container) {
+    if (!svgElement) { addLog('fixMermaidSvgViewBox: svgElement为空', 'error'); return false; }
+    
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    
+    const originalViewBox = svgElement.getAttribute('viewBox');
+    addLog(`当前viewBox="${originalViewBox}"`, 'info');
+    
+    if (!originalViewBox) { addLog('未找到viewBox属性', 'warn'); return false; }
+    
+    const viewBoxParts = originalViewBox.split(/[ ,]+/).map(Number);
+    if (viewBoxParts.length !== 4 || viewBoxParts.some(isNaN)) {
+        addLog(`viewBox格式异常: ${originalViewBox}，跳过修复`, 'error');
+        return false;
+    }
+    
+    let [vbX, vbY, vbWidth, vbHeight] = viewBoxParts;
+    if (vbWidth <= 0 || vbHeight <= 0 || isNaN(vbWidth) || isNaN(vbHeight)) {
+        addLog(`viewBox尺寸无效: ${vbWidth}x${vbHeight}，跳过修复`, 'error');
+        return false;
+    }
+    
+    // 检测图表类型
+    const isQuadrant = svgElement.innerHTML.includes('quadrant') || 
+                       svgElement.querySelectorAll('[class*="quadrant"]').length > 0 ||
+                       originalViewBox === '0 0 500 500';  // 象限图特征
+    
+    const isTreemap = svgElement.innerHTML.includes('treemap') || 
+                      svgElement.querySelectorAll('[class*="treemap"]').length > 0 ||
+                      svgElement.querySelectorAll('rect[fill*="color"]').length > 5;
+    
+    const isKanban = svgElement.innerHTML.includes('kanban') || 
+                     svgElement.querySelectorAll('[class*="kanban"]').length > 0;
+    
+    // 象限图和树图特殊处理：直接按比例放大 viewBox
+    if (isQuadrant || isTreemap) {
+        addLog(`检测到${isQuadrant ? '象限图' : '树图'}，使用预设优化策略`, 'info');
+        
+        // 获取容器宽度
+        const containerRect = container.getBoundingClientRect();
+        const containerWidth = containerRect.width;
+        
+        // 目标显示宽度（容器宽度的 90%）
+        const targetWidth = Math.min(containerWidth * CONFIG.CONTAINER_WIDTH_RATIO, CONFIG.CONTAINER_WIDTH_MAX);
+        
+        // 按比例计算新高度
+        const aspectRatio = vbHeight / vbWidth;
+        let newWidth, newHeight;
+        
+        if (isQuadrant) {
+            // 象限图：保持正方形，适当放大
+            newWidth = Math.max(targetWidth, CONFIG.QUADRANT_MIN_WIDTH);
+            newHeight = newWidth;
+        } else {
+            // 树图：保持宽高比
+            newWidth = Math.max(targetWidth, CONFIG.TREEMAP_MIN_WIDTH);
+            newHeight = newWidth * aspectRatio;
+        }
+        
+        // 计算居中偏移
+        const newMinX = (vbWidth - newWidth) / 2;
+        const newMinY = (vbHeight - newHeight) / 2;
+        
+        const newViewBox = `${newMinX} ${newMinY} ${newWidth} ${newHeight}`;
+        svgElement.setAttribute('viewBox', newViewBox);
+        
+        // 强制设置 SVG 样式
+        svgElement.style.width = '100%';
+        svgElement.style.height = 'auto';
+        svgElement.style.maxWidth = `${newWidth}px`;
+        
+        addLog(`图表已优化: viewBox从 ${vbWidth}x${vbHeight} 调整为 ${newWidth.toFixed(1)}x${newHeight.toFixed(1)}`, 'info');
+        return true;
+    }
+    
+    // 原有的大图缩放逻辑...
+    const MAX_VB_SIZE = isKanban ? CONFIG.VIEWBOX_MAX_SIZE_KANBAN : CONFIG.VIEWBOX_MAX_SIZE;
+    if (vbWidth > MAX_VB_SIZE || vbHeight > MAX_VB_SIZE) {
+        addLog(`viewBox尺寸过大 (${vbWidth}x${vbHeight})，将进行裁剪优化`, 'warn');
+        const scale = Math.min(MAX_VB_SIZE / vbWidth, MAX_VB_SIZE / vbHeight, 1);
+        if (scale < 1) {
+            const newWidth = vbWidth * scale;
+            const newHeight = vbHeight * scale;
+            const newX = vbX * scale;
+            const newY = vbY * scale;
+            const newViewBox = `${newX} ${newY} ${newWidth} ${newHeight}`;
+            svgElement.setAttribute('viewBox', newViewBox);
+            addLog(`viewBox已缩放: ${newViewBox}`, 'info');
+            vbX = newX; vbY = newY; vbWidth = newWidth; vbHeight = newHeight;
+        }
+    }
+    
+    let svgRect;
+    try {
+        svgRect = svgElement.getBoundingClientRect();
+        if (!svgRect || svgRect.width === 0 || isNaN(svgRect.width)) {
+            addLog(`SVG容器尺寸无效，使用备用修复策略`, 'warn');
+            // 备用策略：直接优化原始 viewBox
+            return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
+        }
+    } catch(e) {
+        addLog(`获取SVG容器尺寸失败: ${e.message}，使用备用修复`, 'error');
+        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
+    }
+    
+    const allElements = svgElement.querySelectorAll('g, rect, circle, ellipse, line, polyline, polygon, path, text, tspan, foreignObject');
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let validCount = 0;
+    const textHeights = [];
+    
+    for (const el of allElements) {
+        if (el.closest('marker') || el.closest('defs')) continue;
+        
+        let rect;
+        try {
+            rect = el.getBoundingClientRect();
+        } catch(e) {
+            continue;
+        }
+        
+        if (!rect || typeof rect.left !== 'number' || isNaN(rect.left) || isNaN(rect.top) || 
+            isNaN(rect.right) || isNaN(rect.bottom)) continue;
+        
+        const relativeLeft = rect.left - svgRect.left;
+        const relativeTop = rect.top - svgRect.top;
+        
+        const MAX_OFFSET = Math.max(svgRect.width, svgRect.height) * 10;
+        if (Math.abs(relativeLeft) > MAX_OFFSET || Math.abs(relativeTop) > MAX_OFFSET) {
+            continue;
+        }
+        
+        if ((rect.width === 0 && rect.height === 0) && (!el.textContent || el.textContent.trim() === '')) continue;
+        
+        if (el.tagName === 'text' || el.tagName === 'tspan') {
+            if (rect.height > 0 && rect.height < 100) {
+                textHeights.push(rect.height);
+            }
+        }
+        
+        if (rect.width === 0 && el.tagName === 'text' && el.textContent && el.textContent.trim().length > 0) {
+            validCount++;
+            minX = Math.min(minX, rect.left);
+            minY = Math.min(minY, rect.top);
+            maxX = Math.max(maxX, rect.right);
+            maxY = Math.max(maxY, rect.bottom);
+            continue;
+        }
+        
+        if (rect.width > 0 || rect.height > 0) {
+            validCount++;
+            minX = Math.min(minX, rect.left);
+            minY = Math.min(minY, rect.top);
+            maxX = Math.max(maxX, rect.right);
+            maxY = Math.max(maxY, rect.bottom);
+        }
+    }
+    
+    // 如果没有找到有效元素，使用备用修复
+    if (validCount === 0 || !isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) {
+        addLog(`未找到有效边界 (validCount=${validCount})，使用备用修复`, 'warn');
+        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
+    }
+    
+    const scaleX = svgRect.width / vbWidth;
+    const scaleY = svgRect.height / vbHeight;
+    
+    if (!isFinite(scaleX) || !isFinite(scaleY) || scaleX <= 0 || scaleY <= 0) {
+        addLog(`缩放因子无效，使用备用修复`, 'warn');
+        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
+    }
+    
+    let contentMinX = (minX - svgRect.left) / scaleX + vbX;
+    let contentMinY = (minY - svgRect.top) / scaleY + vbY;
+    let contentMaxX = (maxX - svgRect.left) / scaleX + vbX;
+    let contentMaxY = (maxY - svgRect.top) / scaleY + vbY;
+    
+    if (isNaN(contentMinX) || isNaN(contentMinY) || isNaN(contentMaxX) || isNaN(contentMaxY)) {
+        addLog(`坐标转换失败，使用备用修复`, 'error');
+        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
+    }
+    
+    let contentWidth = contentMaxX - contentMinX;
+    let contentHeight = contentMaxY - contentMinY;
+    
+    if (contentWidth <= 0 || contentHeight <= 0 || isNaN(contentWidth) || isNaN(contentHeight)) {
+        addLog(`内容尺寸无效，使用备用修复`, 'warn');
+        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
+    }
+    
+    // Kanban 图处理
+    if (isKanban) {
+        const avgTextHeight = textHeights.length > 0 ? 
+            textHeights.reduce((a,b) => a + b, 0) / textHeights.length : 20;
+        addLog(`Kanban图: 内容高度 ${contentHeight.toFixed(1)}px, 估算行数 ${(contentHeight/avgTextHeight).toFixed(0)}`, 'info');
+        
+        if (contentHeight > CONFIG.KANBAN_MAX_CONTENT_HEIGHT) {
+            contentHeight = CONFIG.KANBAN_MAX_CONTENT_HEIGHT;
+            const mermaidContainer = container;
+            if (mermaidContainer && !mermaidContainer.classList.contains('kanban-scrollable')) {
+                mermaidContainer.classList.add('kanban-scrollable');
+                mermaidContainer.style.overflowY = 'auto';
+                mermaidContainer.style.maxHeight = CONFIG.KANBAN_SCROLL_MAX_HEIGHT;
+                addLog(`Kanban容器已添加垂直滚动条`, 'info');
+            }
+        }
+    }
+    
+    const padding = isKanban ? CONFIG.VIEWBOX_PADDING_KANBAN : CONFIG.VIEWBOX_PADDING;
+    let newMinX = Math.max(0, contentMinX - padding);
+    let newMinY = Math.max(0, contentMinY - padding);
+    let newWidth = contentWidth + padding * 2;
+    let newHeight = contentHeight + padding * 2;
+    
+    const MAX_FINAL_SIZE = isKanban ? CONFIG.FINAL_MAX_SIZE_KANBAN : CONFIG.FINAL_MAX_SIZE;
+    if (newWidth > MAX_FINAL_SIZE) {
+        const shrink = MAX_FINAL_SIZE / newWidth;
+        newWidth = MAX_FINAL_SIZE;
+        newHeight = newHeight * shrink;
+    }
+    if (newHeight > MAX_FINAL_SIZE) {
+        const shrink = MAX_FINAL_SIZE / newHeight;
+        newHeight = MAX_FINAL_SIZE;
+        newWidth = newWidth * shrink;
+    }
+    
+    if (isNaN(newMinX) || isNaN(newMinY) || isNaN(newWidth) || isNaN(newHeight) || newWidth <= 0 || newHeight <= 0) {
+        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
+    }
+    
+    const newViewBox = `${newMinX} ${newMinY} ${newWidth} ${newHeight}`;
+    svgElement.setAttribute('viewBox', newViewBox);
+    addLog(`viewBox已优化: ${newViewBox}`, 'info');
+    
+    return true;
+}
+  // 核心 Mermaid 渲染函数
+  async function renderMermaid(container) {
+    const mermaidBlocks = container.querySelectorAll('code.language-mermaid');
+    
+    for (let idx = 0; idx < mermaidBlocks.length; idx++) {
+      const block = mermaidBlocks[idx];
+      const pre = block.parentElement;
+      const code = block.textContent;
+      const id = 'mermaid-' + Date.now() + '-' + Math.random().toString(36).substr(2, 8);
+      
+      const wrapper = document.createElement('div');
+      wrapper.className = 'mermaid-container';
+      wrapper.id = id;
+      
+      const chartId = `mermaid-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 6)}`;
+      addLog(`[图表 #${idx+1}] 开始渲染，ID: ${chartId}`, 'info');
+      addLog(`原始代码预览: ${code.substring(0, 100)}${code.length > 100 ? '...' : ''}`, 'info');
+
+      try {
+        const { svg } = await mermaid.render(id + '-svg', code);
+        wrapper.innerHTML = svg;
+        
+        // 先插入 DOM
+        pre.parentNode.replaceChild(wrapper, pre);
+        
+        const svgElement = wrapper.querySelector('svg');
+        if (svgElement) {
+          // 设置基础样式
+          svgElement.style.display = 'block';
+          svgElement.style.margin = '0 auto';
+          svgElement.style.maxWidth = '100%';
+          svgElement.style.height = 'auto';
+          
+          // 修复 viewBox（包含等待渲染完成的逻辑）
+          await fixMermaidSvgViewBox(svgElement, wrapper);
+          
+          // 最终设置宽度为 100%
+          svgElement.style.width = '100%';
+        }
+        
+      } catch (error) {
+        console.error('Mermaid render error:', error);
+        wrapper.innerHTML = `<div class="text-red-500 p-4">❌ 图表渲染失败: ${error.message}</div>`;
+        pre.parentNode.replaceChild(wrapper, pre);
+      }
+    }
+  }
+
+  function renderExcalidrawFixed(container) {
+    const excaliBlocks = container.querySelectorAll('code.language-excalidraw');
+    excaliBlocks.forEach(block => {
+      const raw = block.innerText.trim();
+      const pre = block.parentElement;
+      const card = document.createElement('div');
+      card.className = 'bg-white rounded-xl border border-greenEmerald/20 p-4 my-6';
+      card.innerHTML = `
+        <div class="flex items-center gap-2 mb-3"><span class="bg-greenDeep/10 text-greenDeep px-2 py-0.5 rounded-md text-xs font-mono">✏️ Excalidraw 固定视图 (高度400px)</span></div>
+        <div class="excalidraw-fixed-container w-full h-[400px] bg-white rounded-lg border border-greenEmerald/20 overflow-auto flex items-center justify-center relative">
+          <div class="text-center text-muted-foreground text-sm p-4">Excalidraw 源数据预览 (固定容器)<br/><pre class="text-xs mt-2 bg-gray-50 p-2 rounded overflow-auto max-h-64">${escapeHtml(raw.slice(0, 800))}${raw.length>800?'...':''}</pre></div>
+        </div>
+      `;
+      pre.parentNode.replaceChild(card, pre);
+    });
+  }
+
+  function applyCodeHighlighting(container) {
+    const codeBlocks = container.querySelectorAll('pre code');
+    codeBlocks.forEach(block => {
+      const parentPre = block.parentElement;
+      if(parentPre && (parentPre.closest('.mermaid-container') || parentPre.closest('.echarts-box') || parentPre.closest('.excalidraw-fixed-container'))) {
+        return;
+      }
+      hljs.highlightElement(block);
+    });
+  }
+
+  function handleResize() {
+    echartsInstances.forEach(chart => chart.resize());
+  }
+  window.addEventListener('resize', () => handleResize());
+
+  async function loadAndRenderMd(filePath) {
+    if(!filePath) return;
+    currentDocPath = filePath;
+    mainContainer.innerHTML = `<div class="flex justify-center py-20"><div class="animate-pulse text-greenDeep">🌿 载入 ${escapeHtml(filePath)} ...</div></div>`;
+    try {
+      const resp = await fetch(`./${filePath}`);
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const mdText = await resp.text();
+
+      // 在 marked.parse 之前，保护公式标记（使用固定标记）
+      let protectedMd = mdText;
+      protectedMd = protectedMd.replace(/\\\(/g, '‼️KATEX_INLINE_OPEN‼️');
+      protectedMd = protectedMd.replace(/\\\)/g, '‼️KATEX_INLINE_CLOSE‼️');
+      protectedMd = protectedMd.replace(/\\\[/g, '‼️KATEX_DISPLAY_OPEN‼️');
+      protectedMd = protectedMd.replace(/\\\]/g, '‼️KATEX_DISPLAY_CLOSE‼️');
+
+      let rawHtml = marked.parse(protectedMd);
+
+      // 还原公式标记
+      rawHtml = rawHtml.replace(/‼️KATEX_INLINE_OPEN‼️/g, '\\(');
+      rawHtml = rawHtml.replace(/‼️KATEX_INLINE_CLOSE‼️/g, '\\)');
+      rawHtml = rawHtml.replace(/‼️KATEX_DISPLAY_OPEN‼️/g, '\\[');
+      rawHtml = rawHtml.replace(/‼️KATEX_DISPLAY_CLOSE‼️/g, '\\]');
+            
+      rawHtml = fixImagePaths(rawHtml);
+      mainContainer.innerHTML = `<div class="doc-content">${rawHtml}</div>`;
+      const docDiv = mainContainer.querySelector('.doc-content');
+      if(!docDiv) return;
+      
+      echartsObservers.forEach(o => o.disconnect());
+      echartsObservers = [];
+      echartsInstances = [];
+
+      const safeRender = (fn, name) => {
+        try { fn(); } catch(e) { console.error(`${name} failed:`, e); addLog(`${name} 渲染失败: ${e.message}`, 'error'); }
+      };
+      const safeRenderAsync = async (fn, name) => {
+        try { await fn(); } catch(e) { console.error(`${name} failed:`, e); addLog(`${name} 渲染失败: ${e.message}`, 'error'); }
+      };
+
+      safeRender(() => applyGlobalDecor(docDiv), 'applyGlobalDecor');
+      safeRender(() => wrapH3IntoCards(docDiv), 'wrapH3IntoCards');
+      globalH3Cycle = 0;
+      safeRender(() => applyAdaptiveH4Layout(docDiv), 'applyAdaptiveH4Layout');
+      safeRender(() => renderEcharts(docDiv), 'renderEcharts');
+      await safeRenderAsync(() => renderMermaid(docDiv), 'renderMermaid');
+      safeRender(() => renderExcalidrawFixed(docDiv), 'renderExcalidrawFixed');
+      safeRender(() => applyCodeHighlighting(docDiv), 'applyCodeHighlighting');
+
+      if (typeof renderMathInElement !== 'undefined') {
+        safeRender(() => renderMathInElement(docDiv, {
+          delimiters: [
+            {left: '\\[', right: '\\]', display: true},
+            {left: '\\(', right: '\\)', display: false}
+          ],
+          throwOnError: false,
+          macros: {
+            "\\text": "\\text"
+          }
+        }), 'KaTeX');
+        console.log('✅ KaTeX 渲染已执行');
+      } else {
+        console.error('❌ renderMathInElement 未加载');
+      }
+      
+      if(mdFileList.length) renderSidebar(mdFileList, currentDocPath);
+    } catch(err) {
+      console.error(err);
+      mainContainer.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center text-red-700">❌ 加载失败: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  async function initApp() {
+    sidebarList.addEventListener('click', (e) => {
+      const item = e.target.closest('.sidebar-item');
+      if (!item) return;
+      const path = item.dataset.path;
+      if (path && path !== currentDocPath) loadAndRenderMd(path);
+    });
+    const files = await fetchMdFilesFromSrc();
+    if(files.length) {
+      mdFileList = files;
+      renderSidebar(mdFileList);
+      if(mdFileList[0]) loadAndRenderMd(mdFileList[0]);
+    } else {
+      sidebarList.innerHTML = `<div class="text-white/50 text-sm p-4 text-center">⚠️ 无法获取文档列表<br>请使用Live Server或确认src目录存在.md文件</div>`;
+      mainContainer.innerHTML = `<div class="text-center py-24 text-slateMuted">📂 未检测到技术文档，请在 /src 目录放入 .md 文件</div>`;
+    }
+  }
+  window.onload = initApp;
+</script>
+</body>
+</html>
+<!-- 最完美的一版 -->
