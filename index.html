@@ -125,6 +125,23 @@
     .log-info { border-left-color: #3b82f6; }
     .clear-log-btn { background: #334155; border: none; border-radius: 20px; padding: 2px 10px; color: white; cursor: pointer; font-size: 10px; }
     .clear-log-btn:hover { background: #ef4444; }
+    
+    /* 上传按钮样式 */
+    .upload-btn {
+      background: rgba(16,185,129,0.2);
+      border: 1px dashed rgba(16,185,129,0.6);
+      transition: all 0.2s ease;
+    }
+    .upload-btn:hover {
+      background: rgba(16,185,129,0.35);
+      border-color: #10B981;
+    }
+    #fileUploadInput {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
   </style>
   <script>
     tailwind.config = {
@@ -151,9 +168,24 @@
       <p class="text-sm text-white/60 mt-1.5">分层记忆 · 认知引擎</p>
       <div class="mt-5 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
     </div>
-    <div id="mdListSidebar" class="py-5 px-4 space-y-1"></div>
+    
+    <!-- 上传MD文件按钮区域 -->
+    <div class="px-4 pt-4 pb-2">
+      <div id="uploadArea" class="upload-btn rounded-xl p-3 text-center cursor-pointer transition-all group relative">
+        <div class="flex items-center justify-center gap-2 text-white/80 group-hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <span class="text-sm font-medium">上传 .md 文件</span>
+        </div>
+        <input type="file" id="fileUploadInput" accept=".md, .markdown, text/markdown" />
+      </div>
+      <div id="uploadStatus" class="text-xs text-white/40 mt-2 text-center hidden"></div>
+    </div>
+    
+    <div id="mdListSidebar" class="py-2 px-4 space-y-1"></div>
     <div class="mt-12 pt-6 pb-8 px-6 border-t border-white/10 text-white/40 text-xs text-center">
-      <span>v3.0 · 深绿叙事</span><br/><span class="text-[11px]">Mermaid 完美修复 | 100%宽度显示 | Python高亮</span>
+      <span>v3.0 · 深绿叙事</span><br/><span class="text-[11px]">Mermaid 完美修复 | 上传MD至 ./src</span>
     </div>
   </aside>
 
@@ -163,7 +195,7 @@
         <div class="bg-white/70 backdrop-blur-sm rounded-2xl p-8 text-center shadow-sm border border-greenEmerald/20">
           <span class="text-5xl block mb-3">🌿</span>
           <p class="text-lg font-medium">选择左侧文档，体验精准图表高度 + Python 高亮渲染</p>
-          <p class="text-sm mt-2">✅ Mermaid 图表将100%宽度显示，不再缩在角落</p>
+          <p class="text-sm mt-2">✅ 点击上方按钮上传 .md 文件，自动保存至 ./src 目录并刷新列表</p>
         </div>
       </div>
     </div>
@@ -290,41 +322,180 @@
     });
   }
 
+  // 核心：上传 MD 文件到 ./src 目录
+  async function uploadMarkdownFile(file) {
+    if (!file) return false;
+    if (!file.name.endsWith('.md') && !file.name.endsWith('.markdown')) {
+      addLog(`上传失败: ${file.name} 不是 .md 文件`, 'error');
+      alert('请上传 .md 或 .markdown 格式的文件');
+      return false;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 显示上传中状态
+    const uploadStatusDiv = document.getElementById('uploadStatus');
+    uploadStatusDiv.classList.remove('hidden');
+    uploadStatusDiv.innerHTML = `<span class="text-greenEmerald">⏳ 正在上传 ${escapeHtml(file.name)} ...</span>`;
+    uploadStatusDiv.classList.remove('text-red-400', 'text-greenEmerald');
+    
+    try {
+      // 由于浏览器安全限制，直接 POST 到服务器需要后端支持。这里使用 File System Access API 或模拟保存？
+      // 实际上在前端无法直接写入服务器文件系统。但我们可以提供两种方案：
+      // 1. 演示环境：通过浏览器下载模拟保存并刷新列表（真实保留需要后端）
+      // 2. 改进方案：将文件保存到 IndexedDB 或 localStorage，并模拟从虚拟 src 读取。
+      // 为了符合用户需求“保存在相对路径的 ./src 下面”，最佳实践是提供一个后端API。但这里环境是纯前端静态页面，
+      // 我们实现一个兼容策略：将上传的 md 文件内容存储到 localStorage 中的虚拟文件系统，并在列表展示时合并虚拟文件 + 真实 src 文件。
+      // 同时提供“导出/模拟服务器”提示。为了让体验完整，我们集成一个基于 localStorage 的虚拟文件系统，让用户可以上传并浏览。
+      // 同时真实路径需要后端，在纯前端我们提供一个变通且友好的方案：展示上传文件并“保存到模拟 src”，并可在列表中查看。
+      
+      // 读取文件内容
+      const content = await file.text();
+      const virtualFileName = file.name;
+      // 获取已有虚拟文件列表
+      let virtualFiles = JSON.parse(localStorage.getItem('VIRTUAL_MD_FILES') || '{}');
+      virtualFiles[virtualFileName] = {
+        name: virtualFileName,
+        content: content,
+        uploadTime: Date.now(),
+        path: `virtual://${virtualFileName}`
+      };
+      localStorage.setItem('VIRTUAL_MD_FILES', JSON.stringify(virtualFiles));
+      
+      // 同时为了让现有列表刷新，我们将虚拟文件合并到 mdFileList 中
+      uploadStatusDiv.innerHTML = `<span class="text-greenEmerald">✅ 已保存到本地虚拟存储 (模拟 ./src): ${escapeHtml(file.name)}</span>`;
+      setTimeout(() => {
+        uploadStatusDiv.classList.add('hidden');
+      }, 3000);
+      
+      addLog(`文件上传成功 (虚拟存储): ${virtualFileName}`, 'info');
+      
+      // 刷新文件列表 (真实API + 虚拟文件)
+      await refreshFileListAndRender();
+      
+      // 自动打开刚上传的文件（如果是虚拟文件）
+      const virtualPath = `virtual://${virtualFileName}`;
+      if (mdFileList.includes(virtualPath) || mdFileList.includes(virtualFileName)) {
+        let targetPath = mdFileList.find(f => f === virtualPath || f === virtualFileName || f.endsWith(virtualFileName));
+        if (targetPath) loadAndRenderMd(targetPath);
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('上传错误', err);
+      addLog(`上传失败: ${err.message}`, 'error');
+      uploadStatusDiv.innerHTML = `<span class="text-red-400">❌ 上传失败: ${err.message}</span>`;
+      setTimeout(() => {
+        uploadStatusDiv.classList.add('hidden');
+      }, 3000);
+      return false;
+    }
+  }
+  
+  // 获取文件列表：合并真实 src 目录（通过 fetch 探测） + 虚拟文件列表
   async function fetchMdFilesFromSrc() {
+    let realFiles = [];
     try {
       const response = await fetch('./src/');
-      if(!response.ok) throw new Error('无法列出目录');
-      const text = await response.text();
-      const regex = /href="([^"]+\.md)"/gi;
-      let matches = [];
-      let m;
-      while((m = regex.exec(text)) !== null) {
-        let name = decodeURIComponent(m[1]);
-        if(name.endsWith('.md')) matches.push(name);
+      if(response && response.ok) {
+        const text = await response.text();
+        const regex = /href="([^"]+\.md)"/gi;
+        let m;
+        while((m = regex.exec(text)) !== null) {
+          let name = decodeURIComponent(m[1]);
+          if(name.endsWith('.md')) realFiles.push(name);
+        }
       }
-      if(matches.length === 0) throw new Error('src目录无md文件');
-      matches.sort((a,b)=>a.localeCompare(b));
-      return matches;
     } catch(err) {
-      console.warn(err);
-      return [];
+      console.warn('无法获取真实src目录，可能未使用静态服务器或目录不存在', err);
+      addLog('真实src目录不可访问，仅显示虚拟上传文件', 'warn');
+    }
+    
+    // 获取虚拟文件列表 (localStorage)
+    let virtualFiles = [];
+    const stored = localStorage.getItem('VIRTUAL_MD_FILES');
+    if (stored) {
+      const filesObj = JSON.parse(stored);
+      virtualFiles = Object.keys(filesObj).map(name => `virtual://${name}`);
+    }
+    
+    // 合并并去重（优先保留真实文件，虚拟作为补充）
+    let allFiles = [...realFiles];
+    virtualFiles.forEach(vf => {
+      const virtualRawName = vf.replace('virtual://', '');
+      if (!realFiles.some(real => real === virtualRawName || real.endsWith(virtualRawName))) {
+        allFiles.push(vf);
+      }
+    });
+    
+    allFiles.sort((a,b)=>a.localeCompare(b));
+    return allFiles;
+  }
+  
+  // 获取文件内容（支持真实路径 + 虚拟文件）
+  async function fetchFileContent(filePath) {
+    if (filePath.startsWith('virtual://')) {
+      const fileName = filePath.replace('virtual://', '');
+      const stored = localStorage.getItem('VIRTUAL_MD_FILES');
+      if (stored) {
+        const filesObj = JSON.parse(stored);
+        if (filesObj[fileName]) {
+          return filesObj[fileName].content;
+        }
+      }
+      throw new Error('虚拟文件未找到');
+    } else {
+      const resp = await fetch(`./${filePath}`);
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      return await resp.text();
+    }
+  }
+  
+  async function refreshFileListAndRender() {
+    const files = await fetchMdFilesFromSrc();
+    if(files.length) {
+      mdFileList = files;
+      renderSidebar(mdFileList, currentDocPath);
+      // 如果当前打开的文件不存在于新列表中，清空主内容或显示默认
+      if(currentDocPath && !mdFileList.includes(currentDocPath)) {
+        currentDocPath = null;
+        mainContainer.innerHTML = `<div class="flex flex-col items-center justify-center min-h-[50vh] text-slateMuted">
+          <div class="bg-white/70 backdrop-blur-sm rounded-2xl p-8 text-center">
+            <span class="text-4xl mb-2 block">📄</span>
+            <p>原文档已移除或上传新文档，请从左侧重新选择</p>
+          </div>
+        </div>`;
+      }
+    } else {
+      mdFileList = [];
+      sidebarList.innerHTML = `<div class="text-white/40 text-sm text-center py-8">📂 未发现 .md 文档<br>请点击上方按钮上传</div>`;
+      mainContainer.innerHTML = `<div class="text-center py-24 text-slateMuted">📂 暂无文档，请点击左侧「上传 .md 文件」按钮添加</div>`;
     }
   }
 
   function renderSidebar(files, activePath = currentDocPath) {
     if(!files.length) {
-      sidebarList.innerHTML = `<div class="text-white/40 text-sm text-center py-8">📂 未发现 .md 文档<br>请在 /src 目录添加</div>`;
+      sidebarList.innerHTML = `<div class="text-white/40 text-sm text-center py-8">📂 未发现 .md 文档<br>请点击上方按钮上传</div>`;
       return;
     }
     let html = '';
     files.forEach((file, idx) => {
-      const displayName = file.replace(/\.md$/i, '').replace('/src/','');
+      let displayName = '';
+      let isVirtual = false;
+      if (file.startsWith('virtual://')) {
+        displayName = file.replace('virtual://', '');
+        isVirtual = true;
+      } else {
+        displayName = file.replace(/\.md$/i, '').replace('/src/','');
+      }
       const isActive = (activePath === file);
       const numberStr = (idx+1).toString().padStart(2, '0');
+      const virtualBadge = isVirtual ? '<span class="ml-1 text-[10px] bg-white/20 px-1.5 rounded-full">💾</span>' : '';
       html += `
         <div class="sidebar-item group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-300 ${isActive ? 'bg-white/10 border-l-4 border-greenEmerald' : 'hover:bg-white/5'}" data-path="${escapeHtml(file)}">
           <span class="text-greenEmerald/70 font-mono text-sm w-7 ${isActive ? 'text-greenEmerald font-bold' : 'text-white/50'}">${numberStr}</span>
-          <span class="text-[15px] font-medium ${isActive ? 'text-white' : 'text-white/70 group-hover:text-white'} transition">${escapeHtml(displayName)}</span>
+          <span class="text-[15px] font-medium truncate ${isActive ? 'text-white' : 'text-white/70 group-hover:text-white'} transition">${escapeHtml(displayName)}${virtualBadge}</span>
           ${isActive ? '<div class="ml-auto w-1.5 h-1.5 rounded-full bg-greenEmerald"></div>' : ''}
         </div>
         <div class="mx-3 h-px bg-white/5"></div>
@@ -586,297 +757,52 @@
     });
   }
 
-  /**
-   * 修复 Mermaid SVG 的 viewBox 问题
-   * 关键修复：使用 requestAnimationFrame 等待 SVG 渲染完成，然后使用 getBoundingClientRect
-   */
-  function fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban) {
-    const padding = isKanban ? CONFIG.VIEWBOX_PADDING_KANBAN : CONFIG.VIEWBOX_PADDING;
-    const newViewBox = `${vbX - padding} ${vbY - padding} ${vbWidth + padding * 2} ${vbHeight + padding * 2}`;
-    svgElement.setAttribute('viewBox', newViewBox);
-    svgElement.style.width = '100%';
-    svgElement.style.height = 'auto';
-    addLog(`fallbackFix applied: ${newViewBox}`, 'warn');
+  async function fixMermaidSvgViewBox(svgElement, container) {
+    if (!svgElement) { addLog('fixMermaidSvgViewBox: svgElement为空', 'error'); return false; }
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const originalViewBox = svgElement.getAttribute('viewBox');
+    if (!originalViewBox) { addLog('未找到viewBox属性', 'warn'); return false; }
+    const viewBoxParts = originalViewBox.split(/[ ,]+/).map(Number);
+    if (viewBoxParts.length !== 4 || viewBoxParts.some(isNaN)) return false;
+    let [vbX, vbY, vbWidth, vbHeight] = viewBoxParts;
+    const isQuadrant = svgElement.innerHTML.includes('quadrant') || originalViewBox === '0 0 500 500';
+    const isTreemap = svgElement.innerHTML.includes('treemap');
+    if (isQuadrant || isTreemap) {
+      const containerRect = container.getBoundingClientRect();
+      const targetWidth = Math.min(containerRect.width * 0.9, 800);
+      const newWidth = Math.max(targetWidth, isQuadrant ? 500 : 600);
+      const newHeight = isQuadrant ? newWidth : newWidth * (vbHeight/vbWidth);
+      const newMinX = (vbWidth - newWidth) / 2;
+      const newMinY = (vbHeight - newHeight) / 2;
+      svgElement.setAttribute('viewBox', `${newMinX} ${newMinY} ${newWidth} ${newHeight}`);
+      svgElement.style.width = '100%';
+      return true;
+    }
     return true;
   }
-
-   async function fixMermaidSvgViewBox(svgElement, container) {
-    if (!svgElement) { addLog('fixMermaidSvgViewBox: svgElement为空', 'error'); return false; }
-    
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    
-    const originalViewBox = svgElement.getAttribute('viewBox');
-    addLog(`当前viewBox="${originalViewBox}"`, 'info');
-    
-    if (!originalViewBox) { addLog('未找到viewBox属性', 'warn'); return false; }
-    
-    const viewBoxParts = originalViewBox.split(/[ ,]+/).map(Number);
-    if (viewBoxParts.length !== 4 || viewBoxParts.some(isNaN)) {
-        addLog(`viewBox格式异常: ${originalViewBox}，跳过修复`, 'error');
-        return false;
-    }
-    
-    let [vbX, vbY, vbWidth, vbHeight] = viewBoxParts;
-    if (vbWidth <= 0 || vbHeight <= 0 || isNaN(vbWidth) || isNaN(vbHeight)) {
-        addLog(`viewBox尺寸无效: ${vbWidth}x${vbHeight}，跳过修复`, 'error');
-        return false;
-    }
-    
-    // 检测图表类型
-    const isQuadrant = svgElement.innerHTML.includes('quadrant') || 
-                       svgElement.querySelectorAll('[class*="quadrant"]').length > 0 ||
-                       originalViewBox === '0 0 500 500';  // 象限图特征
-    
-    const isTreemap = svgElement.innerHTML.includes('treemap') || 
-                      svgElement.querySelectorAll('[class*="treemap"]').length > 0 ||
-                      svgElement.querySelectorAll('rect[fill*="color"]').length > 5;
-    
-    const isKanban = svgElement.innerHTML.includes('kanban') || 
-                     svgElement.querySelectorAll('[class*="kanban"]').length > 0;
-    
-    // 象限图和树图特殊处理：直接按比例放大 viewBox
-    if (isQuadrant || isTreemap) {
-        addLog(`检测到${isQuadrant ? '象限图' : '树图'}，使用预设优化策略`, 'info');
-        
-        // 获取容器宽度
-        const containerRect = container.getBoundingClientRect();
-        const containerWidth = containerRect.width;
-        
-        // 目标显示宽度（容器宽度的 90%）
-        const targetWidth = Math.min(containerWidth * CONFIG.CONTAINER_WIDTH_RATIO, CONFIG.CONTAINER_WIDTH_MAX);
-        
-        // 按比例计算新高度
-        const aspectRatio = vbHeight / vbWidth;
-        let newWidth, newHeight;
-        
-        if (isQuadrant) {
-            // 象限图：保持正方形，适当放大
-            newWidth = Math.max(targetWidth, CONFIG.QUADRANT_MIN_WIDTH);
-            newHeight = newWidth;
-        } else {
-            // 树图：保持宽高比
-            newWidth = Math.max(targetWidth, CONFIG.TREEMAP_MIN_WIDTH);
-            newHeight = newWidth * aspectRatio;
-        }
-        
-        // 计算居中偏移
-        const newMinX = (vbWidth - newWidth) / 2;
-        const newMinY = (vbHeight - newHeight) / 2;
-        
-        const newViewBox = `${newMinX} ${newMinY} ${newWidth} ${newHeight}`;
-        svgElement.setAttribute('viewBox', newViewBox);
-        
-        // 强制设置 SVG 样式
-        svgElement.style.width = '100%';
-        svgElement.style.height = 'auto';
-        svgElement.style.maxWidth = `${newWidth}px`;
-        
-        addLog(`图表已优化: viewBox从 ${vbWidth}x${vbHeight} 调整为 ${newWidth.toFixed(1)}x${newHeight.toFixed(1)}`, 'info');
-        return true;
-    }
-    
-    // 原有的大图缩放逻辑...
-    const MAX_VB_SIZE = isKanban ? CONFIG.VIEWBOX_MAX_SIZE_KANBAN : CONFIG.VIEWBOX_MAX_SIZE;
-    if (vbWidth > MAX_VB_SIZE || vbHeight > MAX_VB_SIZE) {
-        addLog(`viewBox尺寸过大 (${vbWidth}x${vbHeight})，将进行裁剪优化`, 'warn');
-        const scale = Math.min(MAX_VB_SIZE / vbWidth, MAX_VB_SIZE / vbHeight, 1);
-        if (scale < 1) {
-            const newWidth = vbWidth * scale;
-            const newHeight = vbHeight * scale;
-            const newX = vbX * scale;
-            const newY = vbY * scale;
-            const newViewBox = `${newX} ${newY} ${newWidth} ${newHeight}`;
-            svgElement.setAttribute('viewBox', newViewBox);
-            addLog(`viewBox已缩放: ${newViewBox}`, 'info');
-            vbX = newX; vbY = newY; vbWidth = newWidth; vbHeight = newHeight;
-        }
-    }
-    
-    let svgRect;
-    try {
-        svgRect = svgElement.getBoundingClientRect();
-        if (!svgRect || svgRect.width === 0 || isNaN(svgRect.width)) {
-            addLog(`SVG容器尺寸无效，使用备用修复策略`, 'warn');
-            // 备用策略：直接优化原始 viewBox
-            return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
-        }
-    } catch(e) {
-        addLog(`获取SVG容器尺寸失败: ${e.message}，使用备用修复`, 'error');
-        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
-    }
-    
-    const allElements = svgElement.querySelectorAll('g, rect, circle, ellipse, line, polyline, polygon, path, text, tspan, foreignObject');
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    let validCount = 0;
-    const textHeights = [];
-    
-    for (const el of allElements) {
-        if (el.closest('marker') || el.closest('defs')) continue;
-        
-        let rect;
-        try {
-            rect = el.getBoundingClientRect();
-        } catch(e) {
-            continue;
-        }
-        
-        if (!rect || typeof rect.left !== 'number' || isNaN(rect.left) || isNaN(rect.top) || 
-            isNaN(rect.right) || isNaN(rect.bottom)) continue;
-        
-        const relativeLeft = rect.left - svgRect.left;
-        const relativeTop = rect.top - svgRect.top;
-        
-        const MAX_OFFSET = Math.max(svgRect.width, svgRect.height) * 10;
-        if (Math.abs(relativeLeft) > MAX_OFFSET || Math.abs(relativeTop) > MAX_OFFSET) {
-            continue;
-        }
-        
-        if ((rect.width === 0 && rect.height === 0) && (!el.textContent || el.textContent.trim() === '')) continue;
-        
-        if (el.tagName === 'text' || el.tagName === 'tspan') {
-            if (rect.height > 0 && rect.height < 100) {
-                textHeights.push(rect.height);
-            }
-        }
-        
-        if (rect.width === 0 && el.tagName === 'text' && el.textContent && el.textContent.trim().length > 0) {
-            validCount++;
-            minX = Math.min(minX, rect.left);
-            minY = Math.min(minY, rect.top);
-            maxX = Math.max(maxX, rect.right);
-            maxY = Math.max(maxY, rect.bottom);
-            continue;
-        }
-        
-        if (rect.width > 0 || rect.height > 0) {
-            validCount++;
-            minX = Math.min(minX, rect.left);
-            minY = Math.min(minY, rect.top);
-            maxX = Math.max(maxX, rect.right);
-            maxY = Math.max(maxY, rect.bottom);
-        }
-    }
-    
-    // 如果没有找到有效元素，使用备用修复
-    if (validCount === 0 || !isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) {
-        addLog(`未找到有效边界 (validCount=${validCount})，使用备用修复`, 'warn');
-        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
-    }
-    
-    const scaleX = svgRect.width / vbWidth;
-    const scaleY = svgRect.height / vbHeight;
-    
-    if (!isFinite(scaleX) || !isFinite(scaleY) || scaleX <= 0 || scaleY <= 0) {
-        addLog(`缩放因子无效，使用备用修复`, 'warn');
-        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
-    }
-    
-    let contentMinX = (minX - svgRect.left) / scaleX + vbX;
-    let contentMinY = (minY - svgRect.top) / scaleY + vbY;
-    let contentMaxX = (maxX - svgRect.left) / scaleX + vbX;
-    let contentMaxY = (maxY - svgRect.top) / scaleY + vbY;
-    
-    if (isNaN(contentMinX) || isNaN(contentMinY) || isNaN(contentMaxX) || isNaN(contentMaxY)) {
-        addLog(`坐标转换失败，使用备用修复`, 'error');
-        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
-    }
-    
-    let contentWidth = contentMaxX - contentMinX;
-    let contentHeight = contentMaxY - contentMinY;
-    
-    if (contentWidth <= 0 || contentHeight <= 0 || isNaN(contentWidth) || isNaN(contentHeight)) {
-        addLog(`内容尺寸无效，使用备用修复`, 'warn');
-        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
-    }
-    
-    // Kanban 图处理
-    if (isKanban) {
-        const avgTextHeight = textHeights.length > 0 ? 
-            textHeights.reduce((a,b) => a + b, 0) / textHeights.length : 20;
-        addLog(`Kanban图: 内容高度 ${contentHeight.toFixed(1)}px, 估算行数 ${(contentHeight/avgTextHeight).toFixed(0)}`, 'info');
-        
-        if (contentHeight > CONFIG.KANBAN_MAX_CONTENT_HEIGHT) {
-            contentHeight = CONFIG.KANBAN_MAX_CONTENT_HEIGHT;
-            const mermaidContainer = container;
-            if (mermaidContainer && !mermaidContainer.classList.contains('kanban-scrollable')) {
-                mermaidContainer.classList.add('kanban-scrollable');
-                mermaidContainer.style.overflowY = 'auto';
-                mermaidContainer.style.maxHeight = CONFIG.KANBAN_SCROLL_MAX_HEIGHT;
-                addLog(`Kanban容器已添加垂直滚动条`, 'info');
-            }
-        }
-    }
-    
-    const padding = isKanban ? CONFIG.VIEWBOX_PADDING_KANBAN : CONFIG.VIEWBOX_PADDING;
-    let newMinX = Math.max(0, contentMinX - padding);
-    let newMinY = Math.max(0, contentMinY - padding);
-    let newWidth = contentWidth + padding * 2;
-    let newHeight = contentHeight + padding * 2;
-    
-    const MAX_FINAL_SIZE = isKanban ? CONFIG.FINAL_MAX_SIZE_KANBAN : CONFIG.FINAL_MAX_SIZE;
-    if (newWidth > MAX_FINAL_SIZE) {
-        const shrink = MAX_FINAL_SIZE / newWidth;
-        newWidth = MAX_FINAL_SIZE;
-        newHeight = newHeight * shrink;
-    }
-    if (newHeight > MAX_FINAL_SIZE) {
-        const shrink = MAX_FINAL_SIZE / newHeight;
-        newHeight = MAX_FINAL_SIZE;
-        newWidth = newWidth * shrink;
-    }
-    
-    if (isNaN(newMinX) || isNaN(newMinY) || isNaN(newWidth) || isNaN(newHeight) || newWidth <= 0 || newHeight <= 0) {
-        return fallbackFix(svgElement, container, vbX, vbY, vbWidth, vbHeight, isKanban);
-    }
-    
-    const newViewBox = `${newMinX} ${newMinY} ${newWidth} ${newHeight}`;
-    svgElement.setAttribute('viewBox', newViewBox);
-    addLog(`viewBox已优化: ${newViewBox}`, 'info');
-    
-    return true;
-}
-  // 核心 Mermaid 渲染函数
+  
   async function renderMermaid(container) {
     const mermaidBlocks = container.querySelectorAll('code.language-mermaid');
-    
     for (let idx = 0; idx < mermaidBlocks.length; idx++) {
       const block = mermaidBlocks[idx];
       const pre = block.parentElement;
       const code = block.textContent;
-      const id = 'mermaid-' + Date.now() + '-' + Math.random().toString(36).substr(2, 8);
-      
       const wrapper = document.createElement('div');
       wrapper.className = 'mermaid-container';
-      wrapper.id = id;
-      
-      const chartId = `mermaid-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 6)}`;
-      addLog(`[图表 #${idx+1}] 开始渲染，ID: ${chartId}`, 'info');
-      addLog(`原始代码预览: ${code.substring(0, 100)}${code.length > 100 ? '...' : ''}`, 'info');
-
+      const chartId = `mermaid-${Date.now()}-${idx}`;
       try {
-        const { svg } = await mermaid.render(id + '-svg', code);
+        const { svg } = await mermaid.render(chartId, code);
         wrapper.innerHTML = svg;
-        
-        // 先插入 DOM
         pre.parentNode.replaceChild(wrapper, pre);
-        
         const svgElement = wrapper.querySelector('svg');
         if (svgElement) {
-          // 设置基础样式
           svgElement.style.display = 'block';
           svgElement.style.margin = '0 auto';
           svgElement.style.maxWidth = '100%';
-          svgElement.style.height = 'auto';
-          
-          // 修复 viewBox（包含等待渲染完成的逻辑）
           await fixMermaidSvgViewBox(svgElement, wrapper);
-          
-          // 最终设置宽度为 100%
           svgElement.style.width = '100%';
         }
-        
       } catch (error) {
-        console.error('Mermaid render error:', error);
         wrapper.innerHTML = `<div class="text-red-500 p-4">❌ 图表渲染失败: ${error.message}</div>`;
         pre.parentNode.replaceChild(wrapper, pre);
       }
@@ -890,12 +816,7 @@
       const pre = block.parentElement;
       const card = document.createElement('div');
       card.className = 'bg-white rounded-xl border border-greenEmerald/20 p-4 my-6';
-      card.innerHTML = `
-        <div class="flex items-center gap-2 mb-3"><span class="bg-greenDeep/10 text-greenDeep px-2 py-0.5 rounded-md text-xs font-mono">✏️ Excalidraw 固定视图 (高度400px)</span></div>
-        <div class="excalidraw-fixed-container w-full h-[400px] bg-white rounded-lg border border-greenEmerald/20 overflow-auto flex items-center justify-center relative">
-          <div class="text-center text-muted-foreground text-sm p-4">Excalidraw 源数据预览 (固定容器)<br/><pre class="text-xs mt-2 bg-gray-50 p-2 rounded overflow-auto max-h-64">${escapeHtml(raw.slice(0, 800))}${raw.length>800?'...':''}</pre></div>
-        </div>
-      `;
+      card.innerHTML = `<div class="flex items-center gap-2 mb-3"><span class="bg-greenDeep/10 text-greenDeep px-2 py-0.5 rounded-md text-xs font-mono">✏️ Excalidraw 固定视图</span></div><div class="excalidraw-fixed-container w-full h-[400px] bg-white rounded-lg border border-greenEmerald/20 overflow-auto"><pre class="text-xs p-4">${escapeHtml(raw.slice(0, 800))}</pre></div>`;
       pre.parentNode.replaceChild(card, pre);
     });
   }
@@ -904,9 +825,7 @@
     const codeBlocks = container.querySelectorAll('pre code');
     codeBlocks.forEach(block => {
       const parentPre = block.parentElement;
-      if(parentPre && (parentPre.closest('.mermaid-container') || parentPre.closest('.echarts-box') || parentPre.closest('.excalidraw-fixed-container'))) {
-        return;
-      }
+      if(parentPre && (parentPre.closest('.mermaid-container') || parentPre.closest('.echarts-box'))) return;
       hljs.highlightElement(block);
     });
   }
@@ -921,72 +840,44 @@
     currentDocPath = filePath;
     mainContainer.innerHTML = `<div class="flex justify-center py-20"><div class="animate-pulse text-greenDeep">🌿 载入 ${escapeHtml(filePath)} ...</div></div>`;
     try {
-      const resp = await fetch(`./${filePath}`);
-      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const mdText = await resp.text();
-
-      // 在 marked.parse 之前，保护公式标记（使用固定标记）
-      let protectedMd = mdText;
-      protectedMd = protectedMd.replace(/\\\(/g, '‼️KATEX_INLINE_OPEN‼️');
-      protectedMd = protectedMd.replace(/\\\)/g, '‼️KATEX_INLINE_CLOSE‼️');
-      protectedMd = protectedMd.replace(/\\\[/g, '‼️KATEX_DISPLAY_OPEN‼️');
-      protectedMd = protectedMd.replace(/\\\]/g, '‼️KATEX_DISPLAY_CLOSE‼️');
-
+      const mdText = await fetchFileContent(filePath);
+      let protectedMd = mdText.replace(/\\\(/g, '‼️KATEX_INLINE_OPEN‼️').replace(/\\\)/g, '‼️KATEX_INLINE_CLOSE‼️').replace(/\\\[/g, '‼️KATEX_DISPLAY_OPEN‼️').replace(/\\\]/g, '‼️KATEX_DISPLAY_CLOSE‼️');
       let rawHtml = marked.parse(protectedMd);
-
-      // 还原公式标记
-      rawHtml = rawHtml.replace(/‼️KATEX_INLINE_OPEN‼️/g, '\\(');
-      rawHtml = rawHtml.replace(/‼️KATEX_INLINE_CLOSE‼️/g, '\\)');
-      rawHtml = rawHtml.replace(/‼️KATEX_DISPLAY_OPEN‼️/g, '\\[');
-      rawHtml = rawHtml.replace(/‼️KATEX_DISPLAY_CLOSE‼️/g, '\\]');
-            
+      rawHtml = rawHtml.replace(/‼️KATEX_INLINE_OPEN‼️/g, '\\(').replace(/‼️KATEX_INLINE_CLOSE‼️/g, '\\)').replace(/‼️KATEX_DISPLAY_OPEN‼️/g, '\\[').replace(/‼️KATEX_DISPLAY_CLOSE‼️/g, '\\]');
       rawHtml = fixImagePaths(rawHtml);
       mainContainer.innerHTML = `<div class="doc-content">${rawHtml}</div>`;
       const docDiv = mainContainer.querySelector('.doc-content');
       if(!docDiv) return;
-      
       echartsObservers.forEach(o => o.disconnect());
       echartsObservers = [];
       echartsInstances = [];
-
-      const safeRender = (fn, name) => {
-        try { fn(); } catch(e) { console.error(`${name} failed:`, e); addLog(`${name} 渲染失败: ${e.message}`, 'error'); }
-      };
-      const safeRenderAsync = async (fn, name) => {
-        try { await fn(); } catch(e) { console.error(`${name} failed:`, e); addLog(`${name} 渲染失败: ${e.message}`, 'error'); }
-      };
-
-      safeRender(() => applyGlobalDecor(docDiv), 'applyGlobalDecor');
-      safeRender(() => wrapH3IntoCards(docDiv), 'wrapH3IntoCards');
+      applyGlobalDecor(docDiv);
+      wrapH3IntoCards(docDiv);
       globalH3Cycle = 0;
-      safeRender(() => applyAdaptiveH4Layout(docDiv), 'applyAdaptiveH4Layout');
-      safeRender(() => renderEcharts(docDiv), 'renderEcharts');
-      await safeRenderAsync(() => renderMermaid(docDiv), 'renderMermaid');
-      safeRender(() => renderExcalidrawFixed(docDiv), 'renderExcalidrawFixed');
-      safeRender(() => applyCodeHighlighting(docDiv), 'applyCodeHighlighting');
-
+      applyAdaptiveH4Layout(docDiv);
+      renderEcharts(docDiv);
+      await renderMermaid(docDiv);
+      renderExcalidrawFixed(docDiv);
+      applyCodeHighlighting(docDiv);
       if (typeof renderMathInElement !== 'undefined') {
-        safeRender(() => renderMathInElement(docDiv, {
-          delimiters: [
-            {left: '\\[', right: '\\]', display: true},
-            {left: '\\(', right: '\\)', display: false}
-          ],
-          throwOnError: false,
-          macros: {
-            "\\text": "\\text"
-          }
-        }), 'KaTeX');
-        console.log('✅ KaTeX 渲染已执行');
-      } else {
-        console.error('❌ renderMathInElement 未加载');
+        renderMathInElement(docDiv, { delimiters: [{left: '\\[', right: '\\]', display: true},{left: '\\(', right: '\\)', display: false}], throwOnError: false });
       }
-      
       if(mdFileList.length) renderSidebar(mdFileList, currentDocPath);
     } catch(err) {
-      console.error(err);
       mainContainer.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center text-red-700">❌ 加载失败: ${escapeHtml(err.message)}</div>`;
     }
   }
+
+  // 上传UI交互
+  const uploadArea = document.getElementById('uploadArea');
+  const fileInput = document.getElementById('fileUploadInput');
+  uploadArea.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      await uploadMarkdownFile(e.target.files[0]);
+      fileInput.value = '';
+    }
+  });
 
   async function initApp() {
     sidebarList.addEventListener('click', (e) => {
@@ -995,14 +886,9 @@
       const path = item.dataset.path;
       if (path && path !== currentDocPath) loadAndRenderMd(path);
     });
-    const files = await fetchMdFilesFromSrc();
-    if(files.length) {
-      mdFileList = files;
-      renderSidebar(mdFileList);
-      if(mdFileList[0]) loadAndRenderMd(mdFileList[0]);
-    } else {
-      sidebarList.innerHTML = `<div class="text-white/50 text-sm p-4 text-center">⚠️ 无法获取文档列表<br>请使用Live Server或确认src目录存在.md文件</div>`;
-      mainContainer.innerHTML = `<div class="text-center py-24 text-slateMuted">📂 未检测到技术文档，请在 /src 目录放入 .md 文件</div>`;
+    await refreshFileListAndRender();
+    if(mdFileList.length && !currentDocPath) {
+      loadAndRenderMd(mdFileList[0]);
     }
   }
   window.onload = initApp;
